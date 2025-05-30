@@ -58,12 +58,19 @@ class SpliceEvent:
         print("dpi_pid_index", hex(self.as_dict['dpi_pid_index']), self.as_dict['dpi_pid_index'])
         print("scte35_protocol_version", hex(self.as_dict['scte35_protocol_version']), self.as_dict['scte35_protocol_version'])
         print("timestamp", hex(self.as_dict['timestamp']["time_type"]), self.as_dict['timestamp']["time_type"])
-        print("num_ops", hex(self.as_dict['num_ops']), self.as_dict['num_ops'])
-        for key in self.as_dict['ops']:
-            print("op_id", hex(self.as_dict['ops'][key]["op_id"]), self.as_dict['ops'][key]["op_id"], self.as_dict['ops'][key]["type"])
-            print("data_length", hex(self.as_dict['ops'][key]["data_length"]), self.as_dict['ops'][key]["data_length"])
-            print("data", self.as_dict['ops'][key]["data"])
-                
+        if self.as_dict['timestamp']["time_type"] == 1:
+            print("  UTC_seconds", hex(self.as_dict['timestamp']["UTC_seconds"]), self.as_dict['timestamp']["UTC_seconds"])
+            print("  UTC_microseconds", hex(self.as_dict['timestamp']["UTC_microseconds"]), self.as_dict['timestamp']["UTC_microseconds"])
+        if self.as_dict['timestamp']["time_type"] == 2:
+            print("  hours", hex(self.as_dict['timestamp']["hours"]), self.as_dict['timestamp']["hours"])
+            print("  minutes", hex(self.as_dict['timestamp']["minutes"]), self.as_dict['timestamp']["minutes"])
+            print("  seconds", hex(self.as_dict['timestamp']["seconds"]), self.as_dict['timestamp']["seconds"])
+            print("  frames", hex(self.as_dict['timestamp']["frames"]), self.as_dict['timestamp']["frames"])
+        for index in range(len(self.as_dict['ops'])):
+            print("op_id", hex(self.as_dict['ops'][index]["op_id"]), self.as_dict['ops'][index]["op_id"], self.as_dict['ops'][index]["type"])
+            print("data_length", hex(self.as_dict['ops'][index]["data_length"]), self.as_dict['ops'][index]["data_length"])
+            print("data")
+               
     def to_binary(self):
         self.position = 0
         bit_array = bitstring.BitArray(length=self.as_dict["message_size"]*byte_size)
@@ -121,7 +128,6 @@ class SpliceEvent:
         self.position = self.position + bytes*byte_size
         return None
 
-
     def hex_string(self, value, bytes):
         s = hex(value) 
         return '0x' + s[2:].zfill(bytes*2)
@@ -131,3 +137,30 @@ class SpliceEvent:
 
     def set_pre_roll_time(self, time):
         self.as_dict["ops"][0]["data"]["pre_roll_time"] = time 
+    
+    def get_segmentation_upid(self):
+        return self.as_dict["ops"][1]["data"]["segmentation_upid"]
+    
+    def get_segmentation_type_id(self):
+        return self.as_dict["ops"][1]["data"]["segmentation_type_id"]
+    
+    def get_segmentation_event_id(self):
+        return self.as_dict["ops"][1]["data"]["segmentation_event_id"]
+    
+    def get_duration(self):
+        return self.as_dict["ops"][1]["data"]["duration"] #seconds
+
+    def get_splice_event_timestamp(self):
+        if self.as_dict['timestamp']["time_type"] == 1:
+            utc_seconds = int(self.as_dict['timestamp']["UTC_seconds"])
+            utc_microseconds = int(self.as_dict['timestamp']["UTC_microseconds"])
+            return (utc_seconds, utc_microseconds)
+        if self.as_dict['timestamp']["time_type"] == 2:
+            hours = int(self.as_dict['timestamp']["hours"])
+            minutes = int(self.as_dict['timestamp']["minutes"])
+            seconds = int(self.as_dict['timestamp']["seconds"])
+            frames = int(self.as_dict['timestamp']["frames"])
+            return (hours, minutes, seconds, frames)
+        else:
+            pass #notimplemented
+  
