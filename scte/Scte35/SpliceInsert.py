@@ -73,40 +73,66 @@ class SpliceInsert:
 
         return splice_time
 
+    @staticmethod
+    def splice_time_serialize(splice_time):
+        """Serialize a splice_time() structure. Reserved bits are set to 1."""
+        if splice_time["time_specified_flag"]:
+            return bitstring.pack(
+                'bool, uint:6, uint:33',
+                True, 1, splice_time["pts_time"])
+        return bitstring.pack('bool, uint:7', False, 1)
 
-    def splice_time_bitstring_format(self, splice_time_obj):
-        bitstring_format = 'bool=time_spec'
-        return bitstring_format
-
-
-    def splice_time_serialize(self):
-        return
-
-
-    @property
-    def bitstring_format(self):
-        """
-        Return a formatted string representing the object for use by the bitstring library.
-        """
-        bitstring_format = 'uint:32=splice_event_id,' \
-                           'bool=splice_event_cancel_indicator,' \
-                           'uint:7=1'
-        if self.splice_insert["splice_event_cancel_indicator"]:
-            return bitstring_format
-        else:
-            bitstring_format += ',' \
-                                'bool=out_of_network_indicator,' \
-                                'bool=program_splice_flag,' \
-                                'bool=duration_flag,' \
-                                'bool=splice_immediate_flag,' \
-                                'uint:4=1,'
-        if self.splice_insert['program_splice_flag'] and not self.splice_insert['splice_immediate_flag']:
-            bitstring_format += 'bool='
-                                
-
+    @staticmethod
+    def break_duration_serialize(break_duration):
+        """Serialize a break_duration() structure. Reserved bits are set to 1."""
+        return bitstring.pack(
+            'bool, uint:6, uint:33',
+            break_duration["auto_return"], 1, break_duration["duration"])
 
     def serialize(self):
-        return bitstring.pack(fmt=self.bitstring_format(), **self.splice_insert)
+        """Serialize this splice_insert() command back into a bitstring.
+
+        Mirrors the parsing performed in __init__ branch for branch. Reserved
+        bits are emitted with a value of 1, matching the other serializers in
+        this library.
+        """
+        result = bitstring.pack(
+            'uint:32, bool, uint:7',
+            self.splice_insert['splice_event_id'],
+            self.splice_insert['splice_event_cancel_indicator'],
+            1)
+
+        if self.splice_insert['splice_event_cancel_indicator']:
+            return result
+
+        result += bitstring.pack(
+            'bool, bool, bool, bool, uint:4',
+            self.splice_insert['out_of_network_indicator'],
+            self.splice_insert['program_splice_flag'],
+            self.splice_insert['duration_flag'],
+            self.splice_insert['splice_immediate_flag'],
+            1)
+
+        if self.splice_insert['program_splice_flag'] and not self.splice_insert['splice_immediate_flag']:
+            result += self.splice_time_serialize(self.splice_insert['splice_time'])
+
+        if not self.splice_insert['program_splice_flag']:
+            result += bitstring.pack('uint:8', self.splice_insert['component_count'])
+            for component in self.splice_insert['components']:
+                result += bitstring.pack('uint:8', component['component_tag'])
+                if not self.splice_insert['splice_immediate_flag']:
+                    result += self.splice_time_serialize(component['splice_time'])
+
+        if self.splice_insert['duration_flag']:
+            result += self.break_duration_serialize(self.splice_insert['break_duration'])
+
+        result += bitstring.pack(
+            'uint:16, uint:8, uint:8',
+            self.splice_insert['unique_program_id'],
+            self.splice_insert['avail_num'],
+            self.splice_insert['avails_expected'])
+
+        return result
 
     @property
     def as_dict(self):
