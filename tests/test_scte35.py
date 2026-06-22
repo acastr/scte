@@ -116,6 +116,25 @@ def test_splice_event_serialize_roundtrip():
     assert SpliceEvent.from_hex_string(reserialized.hex()).as_dict == ev.as_dict
 
 
+def test_serialize_recomputes_length_fields():
+    # serialize() must derive the length fields from the actual content, not
+    # re-emit whatever is stored. Corrupt all three stored values, then confirm
+    # the reserialized-and-reparsed event carries the correct ones. Expected
+    # values for ts_zero_upid: splice_command_length 5 (a time_signal),
+    # descriptor_loop_length 36, section_length 11+5+2+36+4 == 58.
+    ev = SpliceEvent(VECTORS["ts_zero_upid"])
+    ev.splice_info_section["section_length"] = 999
+    ev.splice_info_section["splice_command_length"] = 999
+    ev.splice_info_section["descriptor_loop_length"] = 999
+
+    reparsed = SpliceEvent.from_hex_string(ev.serialize().tobytes().hex()).as_dict
+    assert reparsed["splice_command_length"] == 5
+    assert reparsed["descriptor_loop_length"] == 36
+    assert reparsed["section_length"] == 58
+    # overlay, not mutation: the object's stored (corrupt) values are untouched.
+    assert ev.splice_info_section["section_length"] == 999
+
+
 @pytest.mark.xfail(
     reason="bug #2: SpliceInsert.serialize() broken on this base. "
     "Fix branch: fix/splice-insert-serialize.",

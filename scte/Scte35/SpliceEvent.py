@@ -128,8 +128,10 @@ class SpliceEvent:
 
 
     def serialize(self):
-        splice_info_section_begin_bs = bitstring.pack(fmt=self.bitstring_format, **self.splice_info_section)
-
+        # Serialize the variable-length parts first, then derive the length
+        # fields from their actual byte sizes rather than re-emitting the
+        # (possibly stale) values stored on the section -- so an event built or
+        # edited via from_dict serializes with self-consistent lengths.
         splice_command_type_bs = None
         if self.splice_info_section["splice_command_type"] is 0:
             raise NotImplementedError('Can not interpret splice_null events')
@@ -143,12 +145,34 @@ class SpliceEvent:
         elif self.splice_info_section["splice_command_type"] is 6:
             splice_command_type_bs = self.splice_info_section["time_signal"].serialize()
 
-        descriptor_loop_length_bs = bitstring.pack(fmt='uint:16=descriptor_loop_length', **self.splice_info_section)
-
+        # Iterate by presence, not the stored descriptor_loop_length, so a stale
+        # count cannot drop or duplicate descriptors.
         splice_descriptors_bs = bitstring.BitArray()
-        if self.splice_info_section["descriptor_loop_length"] > 0:
-            for splice_descriptor in self.splice_info_section["splice_descriptors"]:
-                splice_descriptors_bs += splice_descriptor.serialize()
+        for splice_descriptor in self.splice_info_section.get("splice_descriptors", []):
+            splice_descriptors_bs += splice_descriptor.serialize()
+
+        splice_command_length = len(splice_command_type_bs) // 8
+        descriptor_loop_length = len(splice_descriptors_bs) // 8
+        # section_length counts every byte after the field through CRC_32:
+        #   11  fixed fields (protocol_version .. splice_command_type)
+        # + splice_command_length
+        # + 2   the descriptor_loop_length field
+        # + descriptor_loop_length
+        # + 4   CRC_32 (counted per spec even though not emitted yet --
+        #       see the wire-conformant TODO)
+        section_length = 11 + splice_command_length + 2 + descriptor_loop_length + 4
+
+        # Overlay the recomputed lengths without mutating splice_info_section.
+        header = {
+            **self.splice_info_section,
+            "section_length": section_length,
+            "splice_command_length": splice_command_length,
+        }
+        splice_info_section_begin_bs = bitstring.pack(fmt=self.bitstring_format, **header)
+        descriptor_loop_length_bs = bitstring.pack(
+            fmt='uint:16=descriptor_loop_length',
+            descriptor_loop_length=descriptor_loop_length,
+        )
 
         return splice_info_section_begin_bs + splice_command_type_bs + descriptor_loop_length_bs + splice_descriptors_bs
 
