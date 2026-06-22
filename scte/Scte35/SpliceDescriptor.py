@@ -66,6 +66,7 @@ class SpliceDescriptor:
             if self.__obj_dict['delivery_not_restricted_flag'] is False:
                 bitstring_format += 'bool=web_delivery_allowed_flag,' \
                                     'bool=no_regional_blackout_flag,' \
+                                    'bool=archive_allowed_flag,' \
                                     'bin:2=device_restrictions,'
             else:
                 bitstring_format += 'uint:5=1,'

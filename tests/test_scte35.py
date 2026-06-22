@@ -144,24 +144,22 @@ def test_splice_insert_serialize_roundtrip():
     assert reparsed == si
 
 
-@pytest.mark.xfail(
-    reason="bug #4: segmentation descriptor serialize drops archive_allowed_flag when "
-    "delivery_not_restricted=False, misaligning all following bytes.",
-    strict=False,
-)
 def test_descriptor_delivery_not_restricted_false_roundtrip():
     # Constructed (no sample vector among VECTORS has delivery_not_restricted =
-    # False) precisely to trigger bug #4. The restriction sub-fields below only
-    # appear on the wire when delivery_not_restricted is False, so all five must
-    # be present:
+    # False), which is the only case that exercises bug #4. These restriction
+    # sub-fields only appear on the wire when delivery_not_restricted is False,
+    # so all four must be present:
     #   web_delivery_allowed_flag, no_regional_blackout_flag,
     #   archive_allowed_flag, device_restrictions (2 bits)
     # identifier 0x43554549 is "CUEI" (the standard SCTE-35 identifier).
     # device_restrictions is "11" (a 2-char bin string) to match what the parser
     # produces from bitstring's "bin:2" read. descriptor_length is nominal: the
-    # serializer never validates it. archive_allowed_flag is the field the
-    # serializer drops, so re-parsing recovers a wrong value (or shifts off the
-    # end) -- hence the xfail.
+    # serializer never validates it.
+    #
+    # Before the fix the serializer omitted archive_allowed_flag (1 bit), so
+    # every field after it shifted. We therefore assert not just archive itself
+    # but also a field that lives *past* it (segmentation_type_id): that proves
+    # the byte alignment is correct, which is what bug #4 actually broke.
     desc = {
         "splice_descriptor_tag": 2,
         "descriptor_length": 0x14,
@@ -182,6 +180,15 @@ def test_descriptor_delivery_not_restricted_false_roundtrip():
         "segment_num": 0,
         "segments_expected": 0,
     }
-    first = SpliceDescriptor.from_dict(desc)
-    reparsed = SpliceDescriptor.from_hex_string(first.hex_string).as_dict()
-    assert reparsed["archive_allowed_flag"] == desc["archive_allowed_flag"]
+    reparsed = SpliceDescriptor.from_hex_string(
+        SpliceDescriptor.from_dict(desc).hex_string
+    ).as_dict()
+    for field in (
+        "web_delivery_allowed_flag",
+        "no_regional_blackout_flag",
+        "archive_allowed_flag",
+        "device_restrictions",
+        "segmentation_type_id",  # lives past archive: guards byte alignment
+        "segment_num",
+    ):
+        assert reparsed[field] == desc[field], field
