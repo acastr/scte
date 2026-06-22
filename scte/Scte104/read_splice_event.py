@@ -1,4 +1,3 @@
-# TODO: Unused import
 import bitstring
 from scte.Scte104 import scte104_enums
 
@@ -153,15 +152,6 @@ def time_signal_request_data_encode(bitarray_data, event_object, position):
 
 
 ## Not implemented
-def insert_avail_descriptor_request_data(bitarray_data):
-    return None
-
-## Not implemented
-def insert_avail_descriptor_request_data_encode(bitarray_data, event_object, position):
-    return None
-
-
-## Not implemented
 def insert_descriptor_request_data(bitarray_data):
     return None
 
@@ -215,9 +205,11 @@ def inject_section_data_request_encode(bitarray_data, event_object, position):
 def insert_avail_descriptor_request_data(bitarray_data):
     request_data = {}
     request_data["num_provider_avails"] = bitarray_data.read("uint:8")
-    request_data["avails"] = []
-    [request_data["avails"].append(bitarray_data.read("uint:32")) for i in range(request_data["num_provider_avails"])]
-    return
+    request_data["avails"] = [
+        bitarray_data.read("uint:32")
+        for _ in range(request_data["num_provider_avails"])
+    ]
+    return request_data
 
 def insert_avail_descriptor_request_data_encode(bitarray_data, event_object, position):
     return None
@@ -245,7 +237,9 @@ def insert_segmentation_descriptor_request_data(bitarray_data):
         request["insert_sub_segment_info"] = bitarray_data.read("uint:8")
         request["sub_segment_num"] = bitarray_data.read("uint:8")
         request["sub_segments_expected"] = bitarray_data.read("uint:8")
-    except:
+    except bitstring.ReadError:
+        # The trailing sub-segment fields are optional; if the data ends early
+        # return whatever was parsed so far rather than swallowing every error.
         return request
     return request
 
