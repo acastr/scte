@@ -6,6 +6,7 @@ from scte.Scte35.SpliceDescriptor import SpliceDescriptor
 from scte.Scte35.SpliceNull import SpliceNull
 from scte.Scte35.SpliceInsert import SpliceInsert
 from scte.Scte35.SpliceSchedule import SpliceSchedule
+from scte.Scte35.crc import crc32_mpeg2
 import logging
 
 
@@ -114,7 +115,7 @@ class SpliceEvent:
         bitstring_format = 'uint:8=table_id,' \
                            'bool=section_syntax_indicator,' \
                            'bool=private,' \
-                           'uint:2=1,' \
+                           'uint:2=3,' \
                            'uint:12=section_length,' \
                            'uint:8=protocol_version,' \
                            'bool=encrypted_packet,' \
@@ -174,7 +175,15 @@ class SpliceEvent:
             descriptor_loop_length=descriptor_loop_length,
         )
 
-        return splice_info_section_begin_bs + splice_command_type_bs + descriptor_loop_length_bs + splice_descriptors_bs
+        body = splice_info_section_begin_bs + splice_command_type_bs + descriptor_loop_length_bs + splice_descriptors_bs
+        # CRC_32 covers the whole section up to (but not including) itself. The
+        # body must be byte-aligned for the CRC to be meaningful; bitstring would
+        # silently zero-pad tobytes(), so guard against it explicitly.
+        if len(body) % 8 != 0:
+            raise ValueError("splice_info_section is not byte-aligned; cannot compute CRC_32")
+        crc_32_bs = bitstring.pack('uint:32', crc32_mpeg2(body.tobytes()))
+
+        return body + crc_32_bs
 
     @property
     def hex_string(self):

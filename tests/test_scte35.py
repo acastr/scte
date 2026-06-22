@@ -13,6 +13,7 @@ from scte.Scte35.SpliceEvent import SpliceEvent
 from scte.Scte35.SpliceDescriptor import SpliceDescriptor
 from scte.Scte35.SpliceInsert import SpliceInsert
 from scte.Scte35.TimeSignal import TimeSignal
+from scte.Scte35.crc import crc32_mpeg2
 
 # Known-good SCTE-35 sample messages (base64), carried over from the original
 # test.py. All four happen to be time_signal commands carrying a single
@@ -32,6 +33,20 @@ VECTORS = {
 # round-trips cleanly and is NOT affected by bug #4 (the dropped
 # archive_allowed_flag), which only bites when delivery_not_restricted = False.
 DESCRIPTOR_HEX = "021B43554549000000027FBF030C54564E413130303030303031300000"
+
+
+def test_crc32_mpeg2_check_value():
+    # The documented CRC-32/MPEG-2 check value for the ASCII string "123456789".
+    # Pins the algorithm independently of the SCTE-35 sample vectors.
+    assert crc32_mpeg2(b"123456789") == 0x0376E6E7
+
+
+@pytest.mark.parametrize("b64", VECTORS.values(), ids=list(VECTORS))
+def test_serialize_byte_exact(b64):
+    # Wire-conformant output: reserved bits set to all-1s plus a trailing CRC_32
+    # reproduce the original message byte-for-byte for a faithfully parsed event.
+    raw = base64.standard_b64decode(b64)
+    assert SpliceEvent(b64).serialize().tobytes() == raw
 
 
 @pytest.mark.parametrize("b64", VECTORS.values(), ids=list(VECTORS))

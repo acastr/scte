@@ -58,7 +58,7 @@ class SpliceDescriptor:
                            'uint:32=identifier,' \
                            'uint:32=segmentation_event_id,' \
                            'bool=segmentation_event_cancel_indicator,' \
-                           'uint:7=1,'
+                           'uint:7=127,'
         if self.__obj_dict['segmentation_event_cancel_indicator'] is False:
             bitstring_format += 'bool=program_segmentation_flag,' \
                                 'bool=segmentation_duration_flag,' \
@@ -68,7 +68,7 @@ class SpliceDescriptor:
                                     'bool=no_regional_blackout_flag,' \
                                     'bin:2=device_restrictions,'
             else:
-                bitstring_format += 'uint:5=1,'
+                bitstring_format += 'uint:5=31,'
             if self.__obj_dict['program_segmentation_flag'] is False:
                 # Not supported yet
                 None
