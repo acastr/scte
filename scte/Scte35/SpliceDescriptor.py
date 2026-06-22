@@ -27,16 +27,16 @@ class SpliceDescriptor:
         new_descriptor["descriptor_length"] = bitarray_data.read("uint:8")
         
         new_descriptor["identifier"] = bitarray_data.read("uint:32")
-        if new_descriptor["splice_descriptor_tag"] is 0:
+        if new_descriptor["splice_descriptor_tag"] == 0:
             # avail descriptor
             new_descriptor.update(AvailDescriptor(bitarray_data).as_dict)
-        elif new_descriptor["splice_descriptor_tag"] is 1:
+        elif new_descriptor["splice_descriptor_tag"] == 1:
             # DTMF Descriptor
             new_descriptor.update(DTMFDescriptor(bitarray_data).as_dict)
-        elif new_descriptor["splice_descriptor_tag"] is 2:
+        elif new_descriptor["splice_descriptor_tag"] == 2:
             # SegmentationDescriptor
             new_descriptor.update(SegmentationDescriptor(bitarray_data).as_dict)
-        elif new_descriptor["splice_descriptor_tag"] is 3:
+        elif new_descriptor["splice_descriptor_tag"] == 3:
             # Time Descriptor
             None
         self.__obj_dict = new_descriptor

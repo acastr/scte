@@ -42,16 +42,16 @@ class SpliceEvent:
             self.splice_info_section = init_dict
 
             # Now, replace simple dict representations with actual objects
-            if init_dict["splice_command_type"] is 0:
+            if init_dict["splice_command_type"] == 0:
                 self.is_splice_null = True
                 self.splice_info_section["splice_null"] = SpliceNull(None)
-            elif init_dict["splice_command_type"] is 4:
+            elif init_dict["splice_command_type"] == 4:
                 self.is_splice_schedule = True
                 self.splice_info_section["splice_schedule"] = SpliceSchedule.from_dict(init_dict["splice_schedule"])
-            elif init_dict["splice_command_type"] is 5:
+            elif init_dict["splice_command_type"] == 5:
                 self.is_splice_insert = True
                 self.splice_info_section["splice_insert"] = SpliceInsert.from_dict(init_dict["splice_insert"])
-            elif init_dict["splice_command_type"] is 6:
+            elif init_dict["splice_command_type"] == 6:
                 self.is_time_signal = True
                 self.splice_info_section["time_signal"] = TimeSignal.from_dict(init_dict["time_signal"])
 
@@ -85,16 +85,16 @@ class SpliceEvent:
         self.splice_info_section["splice_command_type"] = bitarray_data.read("uint:8")
 
         # the pos pointer of bitarray_data will be mutated after the following constructors
-        if self.splice_info_section["splice_command_type"] is 0:
+        if self.splice_info_section["splice_command_type"] == 0:
             self.is_splice_null = True
             self.splice_info_section["splice_null"] = SpliceNull(bitarray_data)
-        elif self.splice_info_section["splice_command_type"] is 4:
+        elif self.splice_info_section["splice_command_type"] == 4:
             self.is_splice_schedule = True
             self.splice_info_section["splice_schedule"] = SpliceSchedule(bitarray_data)
-        elif self.splice_info_section["splice_command_type"] is 5:
+        elif self.splice_info_section["splice_command_type"] == 5:
             self.is_splice_insert = True
             self.splice_info_section["splice_insert"] = SpliceInsert(bitarray_data)
-        elif self.splice_info_section["splice_command_type"] is 6:
+        elif self.splice_info_section["splice_command_type"] == 6:
             self.is_time_signal = True
             self.splice_info_section["time_signal"] = TimeSignal(bitarray_data)
         # Loop length is number of total bytes for descriptors
@@ -134,16 +134,16 @@ class SpliceEvent:
         # (possibly stale) values stored on the section -- so an event built or
         # edited via from_dict serializes with self-consistent lengths.
         splice_command_type_bs = None
-        if self.splice_info_section["splice_command_type"] is 0:
+        if self.splice_info_section["splice_command_type"] == 0:
             raise NotImplementedError('Can not interpret splice_null events')
 
-        elif self.splice_info_section["splice_command_type"] is 4:
+        elif self.splice_info_section["splice_command_type"] == 4:
             raise NotImplementedError('Can not interpret splice_schedule events')
 
-        elif self.splice_info_section["splice_command_type"] is 5:
+        elif self.splice_info_section["splice_command_type"] == 5:
             splice_command_type_bs = self.splice_info_section["splice_insert"].serialize()
 
-        elif self.splice_info_section["splice_command_type"] is 6:
+        elif self.splice_info_section["splice_command_type"] == 6:
             splice_command_type_bs = self.splice_info_section["time_signal"].serialize()
 
         # Iterate by presence, not the stored descriptor_loop_length, so a stale

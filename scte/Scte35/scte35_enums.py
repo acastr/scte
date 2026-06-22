@@ -97,5 +97,5 @@ def get_hex_string(type_id):
 
 def get_id_from_message(message):
     for type_id in __segmentation_type_ids:
-        if __segmentation_type_ids[type_id]["message"] is message:
+        if __segmentation_type_ids[type_id]["message"] == message:
             return type_id
