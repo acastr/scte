@@ -6,6 +6,7 @@ from scte.Scte35.SpliceDescriptor import SpliceDescriptor
 from scte.Scte35.SpliceNull import SpliceNull
 from scte.Scte35.SpliceInsert import SpliceInsert
 from scte.Scte35.SpliceSchedule import SpliceSchedule
+from scte.Scte35.crc import crc32_mpeg2
 import logging
 
 
@@ -67,7 +68,7 @@ class SpliceEvent:
         elif init_dict is None:
             raise TypeError('SpliceEvent must be created with B64 data, Hex data, or a passed-in object')
 
-        bitarray_data = bitstring.BitString(bytes=decoded_data)
+        bitarray_data = bitstring.BitStream(bytes=decoded_data)
         self.splice_info_section = {}
         self.splice_info_section["table_id"] = bitarray_data.read("uint:8")
         self.splice_info_section["section_syntax_indicator"] = bitarray_data.read("bool")
@@ -114,7 +115,7 @@ class SpliceEvent:
         bitstring_format = 'uint:8=table_id,' \
                            'bool=section_syntax_indicator,' \
                            'bool=private,' \
-                           'uint:2=1,' \
+                           'uint:2=3,' \
                            'uint:12=section_length,' \
                            'uint:8=protocol_version,' \
                            'bool=encrypted_packet,' \
@@ -128,8 +129,10 @@ class SpliceEvent:
 
 
     def serialize(self):
-        splice_info_section_begin_bs = bitstring.pack(fmt=self.bitstring_format, **self.splice_info_section)
-
+        # Serialize the variable-length parts first, then derive the length
+        # fields from their actual byte sizes rather than re-emitting the
+        # (possibly stale) values stored on the section -- so an event built or
+        # edited via from_dict serializes with self-consistent lengths.
         splice_command_type_bs = None
         if self.splice_info_section["splice_command_type"] is 0:
             raise NotImplementedError('Can not interpret splice_null events')
@@ -143,14 +146,44 @@ class SpliceEvent:
         elif self.splice_info_section["splice_command_type"] is 6:
             splice_command_type_bs = self.splice_info_section["time_signal"].serialize()
 
-        descriptor_loop_length_bs = bitstring.pack(fmt='uint:16=descriptor_loop_length', **self.splice_info_section)
+        # Iterate by presence, not the stored descriptor_loop_length, so a stale
+        # count cannot drop or duplicate descriptors.
+        splice_descriptors_bs = bitstring.BitArray()
+        for splice_descriptor in self.splice_info_section.get("splice_descriptors", []):
+            splice_descriptors_bs += splice_descriptor.serialize()
 
-        splice_descriptors_bs = None
-        if self.splice_info_section["descriptor_loop_length"] > 0:
-            for splice_descriptor in self.splice_info_section["splice_descriptors"]:
-                splice_descriptors_bs += splice_descriptor.serialize()
+        splice_command_length = len(splice_command_type_bs) // 8
+        descriptor_loop_length = len(splice_descriptors_bs) // 8
+        # section_length counts every byte after the field through CRC_32:
+        #   11  fixed fields (protocol_version .. splice_command_type)
+        # + splice_command_length
+        # + 2   the descriptor_loop_length field
+        # + descriptor_loop_length
+        # + 4   CRC_32 (counted per spec even though not emitted yet --
+        #       see the wire-conformant TODO)
+        section_length = 11 + splice_command_length + 2 + descriptor_loop_length + 4
 
-        return splice_info_section_begin_bs + splice_command_type_bs + descriptor_loop_length_bs + splice_descriptors_bs
+        # Overlay the recomputed lengths without mutating splice_info_section.
+        header = {
+            **self.splice_info_section,
+            "section_length": section_length,
+            "splice_command_length": splice_command_length,
+        }
+        splice_info_section_begin_bs = bitstring.pack(fmt=self.bitstring_format, **header)
+        descriptor_loop_length_bs = bitstring.pack(
+            fmt='uint:16=descriptor_loop_length',
+            descriptor_loop_length=descriptor_loop_length,
+        )
+
+        body = splice_info_section_begin_bs + splice_command_type_bs + descriptor_loop_length_bs + splice_descriptors_bs
+        # CRC_32 covers the whole section up to (but not including) itself. The
+        # body must be byte-aligned for the CRC to be meaningful; bitstring would
+        # silently zero-pad tobytes(), so guard against it explicitly.
+        if len(body) % 8 != 0:
+            raise ValueError("splice_info_section is not byte-aligned; cannot compute CRC_32")
+        crc_32_bs = bitstring.pack('uint:32', crc32_mpeg2(body.tobytes()))
+
+        return body + crc_32_bs
 
     @property
     def hex_string(self):
