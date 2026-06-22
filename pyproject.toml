@@ -24,9 +24,15 @@ dependencies = [
     "bitstring>=4.0,<5.0",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
 [project.urls]
 Homepage = "https://github.com/jamesfining/scte"
 Repository = "https://github.com/jamesfining/scte"
 
 [tool.setuptools.packages.find]
 include = ["scte*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
