@@ -145,7 +145,7 @@ class SpliceEvent:
 
         descriptor_loop_length_bs = bitstring.pack(fmt='uint:16=descriptor_loop_length', **self.splice_info_section)
 
-        splice_descriptors_bs = None
+        splice_descriptors_bs = bitstring.BitArray()
         if self.splice_info_section["descriptor_loop_length"] > 0:
             for splice_descriptor in self.splice_info_section["splice_descriptors"]:
                 splice_descriptors_bs += splice_descriptor.serialize()

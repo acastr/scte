@@ -106,12 +106,11 @@ def test_time_signal_serialize_roundtrip():
     assert reparsed == original
 
 
-@pytest.mark.xfail(
-    reason="bug #3: SpliceEvent.serialize() inits splice_descriptors_bs=None then "
-    "adds it -> TypeError. Fix branch: fix/splice-event-descriptors.",
-    strict=False,
-)
 def test_splice_event_serialize_roundtrip():
+    # Full-event structural round-trip for a time_signal + descriptor message.
+    # Fixed by initialising splice_descriptors_bs to an empty BitArray() instead
+    # of None (was bug #3: the None made serialize() raise TypeError on every
+    # path). Reserved-bit/CRC agnostic, as elsewhere -- see module docstring.
     ev = SpliceEvent(VECTORS["ts_zero_upid"])
     reserialized = ev.serialize().tobytes()
     assert SpliceEvent.from_hex_string(reserialized.hex()).as_dict == ev.as_dict
