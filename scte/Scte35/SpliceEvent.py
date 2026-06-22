@@ -67,7 +67,7 @@ class SpliceEvent:
         elif init_dict is None:
             raise TypeError('SpliceEvent must be created with B64 data, Hex data, or a passed-in object')
 
-        bitarray_data = bitstring.BitString(bytes=decoded_data)
+        bitarray_data = bitstring.BitStream(bytes=decoded_data)
         self.splice_info_section = {}
         self.splice_info_section["table_id"] = bitarray_data.read("uint:8")
         self.splice_info_section["section_syntax_indicator"] = bitarray_data.read("bool")

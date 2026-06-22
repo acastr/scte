@@ -39,7 +39,7 @@ class SpliceEvent:
             message_dict["ops"][index]["op_id"] = bitarray_data.read("uint:16")
             message_dict["ops"][index]["type"] = scte104_enums.get_multi_op_id_type(message_dict["ops"][index]["op_id"])
             message_dict["ops"][index]["data_length"] = bitarray_data.read("uint:16")
-            bit_subdata = bitstring.BitString(bytes=bytes.fromhex(bitarray_data.read("hex:" + str(message_dict["ops"][index]["data_length"]*byte_size))))
+            bit_subdata = bitstring.BitStream(bytes=bytes.fromhex(bitarray_data.read("hex:" + str(message_dict["ops"][index]["data_length"]*byte_size))))
             message_dict["ops"][index]["data"] = scte104_enums.read_data(message_dict["ops"][index]["op_id"], bit_subdata) 
         self.as_dict = message_dict
 

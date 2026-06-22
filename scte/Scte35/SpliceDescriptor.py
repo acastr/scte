@@ -43,7 +43,7 @@ class SpliceDescriptor:
 
     @classmethod
     def from_hex_string(cls, hex_string):
-        bitarray_data = bitstring.BitString(bytes=bytes.fromhex(hex_string))
+        bitarray_data = bitstring.BitStream(bytes=bytes.fromhex(hex_string))
         return cls(bitarray_data)
 
     @classmethod
