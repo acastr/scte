@@ -2,7 +2,14 @@ from scte.Scte104 import scte104_enums
 import copy
 import bitstring
 import json
+import logging
+from datetime import datetime, timedelta, timezone
+from string import Template
+from timecode import Timecode
 byte_size = 8
+
+log = logging.getLogger(__name__)
+
 
 class SpliceEvent:
     def __init__(self, bitarray_data, init_dict=None):
@@ -46,6 +53,9 @@ class SpliceEvent:
     def print(self):
         print(str(self))
 
+    def to_json(self):
+        return json.dumps(self.to_dict(upid_as_str=True), indent=4, sort_keys=False)
+
     def __str__(self):
         return(json.dumps(self.to_dict(upid_as_str=True), indent=4, sort_keys=False))
 
@@ -70,7 +80,31 @@ class SpliceEvent:
             print("op_id", hex(self.as_dict['ops'][index]["op_id"]), self.as_dict['ops'][index]["op_id"], self.as_dict['ops'][index]["type"])
             print("data_length", hex(self.as_dict['ops'][index]["data_length"]), self.as_dict['ops'][index]["data_length"])
             print("data")
-               
+
+    def log_detailed(self):
+        log.info("reserved %s %s", hex(self.as_dict['reserved']['raw']), self.as_dict['reserved']['type'])
+        log.info("message_size %s %s", hex(self.as_dict['message_size']), self.as_dict['message_size'])
+        log.info("protocol_version %s %s", hex(self.as_dict['protocol_version']), self.as_dict['protocol_version'])
+        log.info("as_index %s %s", hex(self.as_dict['as_index']), self.as_dict['as_index'])
+        log.info("message_number %s %s", hex(self.as_dict['message_number']), self.as_dict['message_number'])
+        log.info("dpi_pid_index %s %s", hex(self.as_dict['dpi_pid_index']), self.as_dict['dpi_pid_index'])
+        log.info("scte35_protocol_version %s %s", hex(self.as_dict['scte35_protocol_version']), self.as_dict['scte35_protocol_version'])
+        log.info("timestamp %s %s", hex(self.as_dict['timestamp']["time_type"]), self.as_dict['timestamp']["time_type"])
+        if self.as_dict['timestamp']["time_type"] == 2:
+            log.info("  hours %s %s", hex(self.as_dict['timestamp']["hours"]), self.as_dict['timestamp']["hours"])
+            log.info("  minutes %s %s", hex(self.as_dict['timestamp']["minutes"]), self.as_dict['timestamp']["minutes"])
+            log.info("  seconds %s %s", hex(self.as_dict['timestamp']["seconds"]), self.as_dict['timestamp']["seconds"])
+            log.info("  frames %s %s", hex(self.as_dict['timestamp']["frames"]), self.as_dict['timestamp']["frames"])
+            log.info("num_ops %s %s", hex(self.as_dict['num_ops']), self.as_dict['num_ops'])
+        for index in range(len(self.as_dict['ops'])):
+            log.info("op_id %s %s %s", hex(self.as_dict['ops'][index]["op_id"]), self.as_dict['ops'][index]["op_id"], self.as_dict['ops'][index]["type"])
+            log.info("data_length %s %s", hex(self.as_dict['ops'][index]["data_length"]), self.as_dict['ops'][index]["data_length"])
+            log.info("data")
+            for key in self.as_dict['ops'][index]["data"]:
+                log.info("   %s %s", key, self.as_dict['ops'][index]["data"][key])
+        # add newline
+        log.info("")
+
     def to_binary(self):
         self.position = 0
         bit_array = bitstring.BitArray(length=self.as_dict["message_size"]*byte_size)
@@ -154,13 +188,30 @@ class SpliceEvent:
         if self.as_dict['timestamp']["time_type"] == 1:
             utc_seconds = int(self.as_dict['timestamp']["UTC_seconds"])
             utc_microseconds = int(self.as_dict['timestamp']["UTC_microseconds"])
-            return (utc_seconds, utc_microseconds)
-        if self.as_dict['timestamp']["time_type"] == 2:
+            announced = datetime.fromtimestamp(utc_seconds, tz=timezone.utc) \
+                + timedelta(microseconds=utc_microseconds)
+            preroll_ms = int(self.as_dict['ops'][0]["data"]["pre_roll_time"])
+            # announced UTC + preroll = wall-clock time of the transition point
+            return announced + timedelta(milliseconds=preroll_ms)
+        elif self.as_dict['timestamp']["time_type"] == 2:
+            splice_event_template = Template("${hours}:${minutes}:${seconds}:${frames}")
             hours = int(self.as_dict['timestamp']["hours"])
             minutes = int(self.as_dict['timestamp']["minutes"])
             seconds = int(self.as_dict['timestamp']["seconds"])
             frames = int(self.as_dict['timestamp']["frames"])
-            return (hours, minutes, seconds, frames)
+            splice_event_timestamp = Timecode(
+                "25",
+                splice_event_template.substitute(
+                    hours=hours, minutes=minutes, seconds=seconds, frames=frames
+                ),
+            )
+
+            # convert preroll in milliseconds to frames (assumes 25 fps / 40 ms)
+            preroll_to_frames = int(self.as_dict['ops'][0]["data"]["pre_roll_time"]) // 40
+            preroll = Timecode("25", None, None, preroll_to_frames, False)
+
+            # announced timestamp + preroll = timestamp of the transition point
+            return splice_event_timestamp + preroll
         else:
-            pass #notimplemented
+            pass  # not implemented for time_type 3 (GPI)
   
