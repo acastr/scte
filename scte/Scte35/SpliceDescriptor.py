@@ -1,15 +1,12 @@
 import bitstring
 import copy
 from scte.Scte35 import SegmentationDescriptor, DTMFDescriptor, AvailDescriptor
-import logging
+from scte.Scte35._logging import resolve_logger
 
 
 class SpliceDescriptor:
     def __init__(self, bitarray_data, init_dict=None, logger=None):
-        if logger is not None:
-            self._log = logger
-        else:
-            self._log = logging.getLogger()
+        self._log = resolve_logger(logger)
         if init_dict:
             if 'reserved1' not in init_dict:
                 init_dict['reserved1'] = 1
@@ -38,7 +35,7 @@ class SpliceDescriptor:
             new_descriptor.update(SegmentationDescriptor(bitarray_data).as_dict)
         elif new_descriptor["splice_descriptor_tag"] == 3:
             # Time Descriptor
-            None
+            pass
         self.__obj_dict = new_descriptor
 
     @classmethod
@@ -72,7 +69,7 @@ class SpliceDescriptor:
                 bitstring_format += 'uint:5=31,'
             if self.__obj_dict['program_segmentation_flag'] is False:
                 # Not supported yet
-                None
+                pass
             if self.__obj_dict['segmentation_duration_flag'] is True:
                 bitstring_format += 'uint:40=segmentation_duration,'
             bitstring_format += 'uint:8=segmentation_upid_type,' \

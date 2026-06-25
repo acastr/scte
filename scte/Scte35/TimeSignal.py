@@ -1,14 +1,11 @@
 import bitstring
-import logging
 import copy
+from scte.Scte35._logging import resolve_logger
 
 
 class TimeSignal:
     def __init__(self, bitarray_data, init_dict=None, logger=None):
-        if logger is not None:
-            self._log = logger
-        else:
-            self._log = logging.getLogger()
+        self._log = resolve_logger(logger)
         if init_dict:
             self.splice_time = init_dict
             return

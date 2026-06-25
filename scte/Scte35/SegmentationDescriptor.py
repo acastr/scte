@@ -1,13 +1,10 @@
 from scte.Scte35 import scte35_enums
-import logging
+from scte.Scte35._logging import resolve_logger
 
 
 class SegmentationDescriptor:
     def __init__(self, bitarray_data, logger=None):
-        if logger is not None:
-            self._log = logger
-        else:
-            self._log = logging.getLogger()
+        self._log = resolve_logger(logger)
         new_descriptor = {}
         new_descriptor["segmentation_event_id"] = bitarray_data.read("uint:32")
         new_descriptor["segmentation_event_cancel_indicator"] = bitarray_data.read("bool")
