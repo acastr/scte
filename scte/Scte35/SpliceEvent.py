@@ -188,11 +188,20 @@ class SpliceEvent:
 
     @property
     def as_dict(self):
+        # splice_schedule is parsed by a stub that reads no fields, so there is
+        # nothing meaningful to export; fail loudly rather than leak a raw
+        # SpliceSchedule object. Raise before the deepcopy we would only discard.
+        if "splice_schedule" in self.splice_info_section:
+            raise NotImplementedError("as_dict does not support splice_schedule events")
         the_dict = copy.deepcopy(self.splice_info_section)
         if "splice_insert" in the_dict:
             the_dict["splice_insert"] = the_dict["splice_insert"].as_dict
         if "time_signal" in the_dict:
             the_dict["time_signal"] = the_dict["time_signal"].as_dict
+        if "splice_null" in the_dict:
+            # splice_null carries no payload (zero-length command body); represent
+            # it as an empty mapping rather than leaking the SpliceNull object.
+            the_dict["splice_null"] = {}
         if "splice_descriptors" in self.splice_info_section:
             the_dict["splice_descriptors"] = []
             for splice_descriptor in self.splice_info_section["splice_descriptors"]:

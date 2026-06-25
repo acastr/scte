@@ -225,3 +225,27 @@ def test_descriptor_delivery_not_restricted_false_roundtrip():
         "segment_num",
     ):
         assert reparsed[field] == desc[field], field
+
+
+def test_as_dict_splice_null_is_empty_mapping():
+    # splice_null (command_type 0) has a zero-length command body, so it parses
+    # to a data-less SpliceNull. as_dict must export it as {} rather than leaking
+    # the SpliceNull object, and the result must stay JSON-serializable.
+    ev = SpliceEvent.from_dict({"splice_command_type": 0, "descriptor_loop_length": 0})
+    d = ev.as_dict
+    assert d["splice_command_type"] == 0
+    assert d["splice_null"] == {}
+    json.dumps(d)  # must not raise
+
+
+def test_as_dict_splice_schedule_raises_not_implemented():
+    # splice_schedule (command_type 4) is parsed by a stub that reads no fields,
+    # so there is nothing meaningful to export; as_dict must fail loudly instead
+    # of returning a raw SpliceSchedule object. Built white-box because from_dict
+    # can't construct a schedule event (SpliceSchedule has no from_dict).
+    from scte.Scte35.SpliceSchedule import SpliceSchedule
+
+    ev = SpliceEvent.from_dict({"splice_command_type": 0, "descriptor_loop_length": 0})
+    ev.splice_info_section = {"splice_schedule": SpliceSchedule(None), "descriptor_loop_length": 0}
+    with pytest.raises(NotImplementedError):
+        ev.as_dict
