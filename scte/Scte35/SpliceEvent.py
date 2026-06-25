@@ -186,13 +186,17 @@ class SpliceEvent:
     def hex_string(self):
         return self.serialize().hex.upper()
 
-    @property
-    def as_dict(self):
+    def to_dict(self, upid_as_str=False):
+        """Export the event as a plain dict (canonical, matches Scte104.SpliceEvent).
+
+        ``upid_as_str`` controls how segmentation UPIDs are rendered: raw bytes
+        when False (default), a string when True (JSON-friendly).
+        """
         # splice_schedule is parsed by a stub that reads no fields, so there is
         # nothing meaningful to export; fail loudly rather than leak a raw
         # SpliceSchedule object. Raise before the deepcopy we would only discard.
         if "splice_schedule" in self.splice_info_section:
-            raise NotImplementedError("as_dict does not support splice_schedule events")
+            raise NotImplementedError("to_dict does not support splice_schedule events")
         the_dict = copy.deepcopy(self.splice_info_section)
         if "splice_insert" in the_dict:
             the_dict["splice_insert"] = the_dict["splice_insert"].as_dict
@@ -205,8 +209,13 @@ class SpliceEvent:
         if "splice_descriptors" in self.splice_info_section:
             the_dict["splice_descriptors"] = []
             for splice_descriptor in self.splice_info_section["splice_descriptors"]:
-                the_dict["splice_descriptors"] += [ splice_descriptor.as_dict(upid_as_str=True) ]
+                the_dict["splice_descriptors"] += [ splice_descriptor.to_dict(upid_as_str=upid_as_str) ]
         return the_dict
+
+    @property
+    def as_dict(self):
+        # Backwards-compatible alias; preserves the historical UPID-as-string output.
+        return self.to_dict(upid_as_str=True)
 
     @classmethod
     def from_hex_string(cls, hex_string):

@@ -249,3 +249,27 @@ def test_as_dict_splice_schedule_raises_not_implemented():
     ev.splice_info_section = {"splice_schedule": SpliceSchedule(None), "descriptor_loop_length": 0}
     with pytest.raises(NotImplementedError):
         ev.as_dict
+
+
+def test_to_dict_upid_as_str_contract():
+    # Unified export API: SpliceEvent.to_dict matches Scte104.SpliceEvent.to_dict
+    # in both name and the upid_as_str semantics -- raw bytes by default, str when
+    # requested. ts_urn carries a URN segmentation UPID, so the type is visible.
+    ev = SpliceEvent(VECTORS["ts_urn"])
+    upid_bytes = ev.to_dict(upid_as_str=False)["splice_descriptors"][0]["segmentation_upid"]
+    upid_str = ev.to_dict(upid_as_str=True)["splice_descriptors"][0]["segmentation_upid"]
+    assert isinstance(upid_bytes, bytes)
+    assert isinstance(upid_str, str)
+    # The bytes UPID is not JSON-serializable; the str form (upid_as_str=True)
+    # is the one that survives a JSON round-trip.
+    assert json.loads(json.dumps(ev.to_dict(upid_as_str=True)))["splice_command_type"] == 6
+
+
+def test_as_dict_is_backward_compatible_alias():
+    # The as_dict property is retained as an alias and must keep its historical
+    # output: identical to to_dict(upid_as_str=True) (UPIDs as strings).
+    ev = SpliceEvent(VECTORS["ts_urn"])
+    assert ev.as_dict == ev.to_dict(upid_as_str=True)
+    # and the descriptor-level alias matches too
+    desc = SpliceDescriptor.from_hex_string(DESCRIPTOR_HEX)
+    assert desc.as_dict(upid_as_str=True) == desc.to_dict(upid_as_str=True)

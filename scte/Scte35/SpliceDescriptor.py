@@ -90,13 +90,22 @@ class SpliceDescriptor:
     def hex_string(self):
         return self.serialize().hex.upper()
 
-    def as_dict(self, upid_as_str=False):
+    def to_dict(self, upid_as_str=False):
+        """Export the descriptor as a plain dict (canonical, matches the rest of the API).
+
+        ``upid_as_str`` renders the segmentation UPID as a string when True,
+        leaving it as raw bytes when False (default).
+        """
         the_dict = copy.deepcopy(self.__obj_dict)
         if upid_as_str:
             if "segmentation_upid" in the_dict:
                 the_dict['segmentation_upid'] = \
                         str(the_dict['segmentation_upid'])
         return the_dict
+
+    def as_dict(self, upid_as_str=False):
+        # Backwards-compatible alias for to_dict (same signature/behaviour).
+        return self.to_dict(upid_as_str=upid_as_str)
 
     def __str__(self):
         return str(self.as_dict())
