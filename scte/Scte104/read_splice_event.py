@@ -1,17 +1,17 @@
 import bitstring
 from scte.Scte104 import scte104_enums
 
-def manipulate_bits(bit_array, value, position, bytes):
+def manipulate_bits(bit_array, value, position, num_bytes):
     hex_val = value
-    if type(hex_val) == type(int()):
-      hex_val = hex_string(value, bytes)
+    if isinstance(hex_val, int):
+      hex_val = hex_string(value, num_bytes)
     bit_array.overwrite(hex_val, pos=position)
-    return bytes*8
+    return num_bytes*8
 
 
-def hex_string(value, bytes):
+def hex_string(value, num_bytes):
     s = hex(value)
-    return '0x' + s[2:].zfill(bytes*2)
+    return '0x' + s[2:].zfill(num_bytes*2)
 
 
 ## Not implemented
@@ -53,14 +53,14 @@ def splice_request_data(bitarray_data):
     return request_data
 
 def splice_request_data_encode(bitarray_data, event_object, position):
-    position += manipulate_bits(bitarray_data, event_object["splice_insert_type"], position, bytes=1)
-    position +=manipulate_bits(bitarray_data, event_object["splice_event_id"], position, bytes=4)
-    position +=manipulate_bits(bitarray_data, event_object["unique_program_id"], position, bytes=2)
-    position +=manipulate_bits(bitarray_data, event_object["pre_roll_time"], position, bytes=2)
-    position +=manipulate_bits(bitarray_data, event_object["break_duration"], position, bytes=2)
-    position +=manipulate_bits(bitarray_data, event_object["avail_num"], position, bytes=1)
-    position +=manipulate_bits(bitarray_data, event_object["avails_expected"], position, bytes=1)
-    position +=manipulate_bits(bitarray_data, event_object["auto_return_flag"], position, bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["splice_insert_type"], position, num_bytes=1)
+    position +=manipulate_bits(bitarray_data, event_object["splice_event_id"], position, num_bytes=4)
+    position +=manipulate_bits(bitarray_data, event_object["unique_program_id"], position, num_bytes=2)
+    position +=manipulate_bits(bitarray_data, event_object["pre_roll_time"], position, num_bytes=2)
+    position +=manipulate_bits(bitarray_data, event_object["break_duration"], position, num_bytes=2)
+    position +=manipulate_bits(bitarray_data, event_object["avail_num"], position, num_bytes=1)
+    position +=manipulate_bits(bitarray_data, event_object["avails_expected"], position, num_bytes=1)
+    position +=manipulate_bits(bitarray_data, event_object["auto_return_flag"], position, num_bytes=1)
     return None
 
 
@@ -147,7 +147,7 @@ def time_signal_request_data(bitarray_data):
     return request_data
 
 def time_signal_request_data_encode(bitarray_data, event_object, position):
-    position += manipulate_bits(bitarray_data, event_object["pre_roll_time"], position, bytes=2)
+    position += manipulate_bits(bitarray_data, event_object["pre_roll_time"], position, num_bytes=2)
     return None
 
 
@@ -168,9 +168,9 @@ def insert_DTMF_descriptor_request_data(bitarray_data):
     return request_data
 
 def insert_DTMF_descriptor_request_data_encode(bitarray_data, event_object, position):
-    position += manipulate_bits(bitarray_data, event_object["pre_roll"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["dtmf_length"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["dtmf"], position, bytes=event_object["dtmf_length"])
+    position += manipulate_bits(bitarray_data, event_object["pre_roll"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["dtmf_length"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["dtmf"], position, num_bytes=event_object["dtmf_length"])
     return None
 
 
@@ -244,27 +244,27 @@ def insert_segmentation_descriptor_request_data(bitarray_data):
     return request
 
 def insert_segmentation_descriptor_request_data_encode(bitarray_data, event_object, position):
-    position += manipulate_bits(bitarray_data, event_object["segmentation_event_id"], position, bytes=4)
-    position += manipulate_bits(bitarray_data, event_object["segmentation_event_cancel_indicator"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["duration"], position, bytes=2)
-    position += manipulate_bits(bitarray_data, event_object["segmentation_upid_type"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["segmentation_upid_length"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["segmentation_upid"], position, bytes=event_object["segmentation_upid_length"])
-    position += manipulate_bits(bitarray_data, event_object["segmentation_type_id"]["decimal"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["segment_num"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["segments_expected"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["duration_extension_frames"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["delivery_not_restricted_flag"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["web_delivery_allowed_flag"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["no_regional_blackout_flag"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["archive_allowed_flag"], position, bytes=1)
-    position += manipulate_bits(bitarray_data, event_object["device_restrictions"], position, bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["segmentation_event_id"], position, num_bytes=4)
+    position += manipulate_bits(bitarray_data, event_object["segmentation_event_cancel_indicator"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["duration"], position, num_bytes=2)
+    position += manipulate_bits(bitarray_data, event_object["segmentation_upid_type"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["segmentation_upid_length"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["segmentation_upid"], position, num_bytes=event_object["segmentation_upid_length"])
+    position += manipulate_bits(bitarray_data, event_object["segmentation_type_id"]["decimal"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["segment_num"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["segments_expected"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["duration_extension_frames"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["delivery_not_restricted_flag"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["web_delivery_allowed_flag"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["no_regional_blackout_flag"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["archive_allowed_flag"], position, num_bytes=1)
+    position += manipulate_bits(bitarray_data, event_object["device_restrictions"], position, num_bytes=1)
     if "insert_sub_segment_info" in event_object.keys():
-        position += manipulate_bits(bitarray_data, event_object["insert_sub_segment_info"], position, bytes=1)
+        position += manipulate_bits(bitarray_data, event_object["insert_sub_segment_info"], position, num_bytes=1)
     if "sub_segment_num" in event_object.keys():
-        position += manipulate_bits(bitarray_data, event_object["sub_segment_num"], position, bytes=1)
+        position += manipulate_bits(bitarray_data, event_object["sub_segment_num"], position, num_bytes=1)
     if "sub_segments_expected" in event_object.keys():
-        position += manipulate_bits(bitarray_data, event_object["sub_segments_expected"], position, bytes=1)
+        position += manipulate_bits(bitarray_data, event_object["sub_segments_expected"], position, num_bytes=1)
     return None
 
 ## Not implemented
@@ -279,7 +279,7 @@ def insert_tier_data(bitarray_data):
     return {"insert_tier_data": bitarray_data.read("uint:16")}
 
 def insert_tier_data_encode(bitarray_data, event_object, position):
-    position += manipulate_bits(bitarray_data, event_object["insert_tier_data"], position, bytes=2)
+    position += manipulate_bits(bitarray_data, event_object["insert_tier_data"], position, num_bytes=2)
     return None
 
 
