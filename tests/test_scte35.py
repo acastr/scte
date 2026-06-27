@@ -273,3 +273,56 @@ def test_as_dict_is_backward_compatible_alias():
     # and the descriptor-level alias matches too
     desc = SpliceDescriptor.from_hex_string(DESCRIPTOR_HEX)
     assert desc.as_dict(upid_as_str=True) == desc.to_dict(upid_as_str=True)
+
+
+# segmentation_upid_decoded: (vector, expected upid type, type name, decoded text).
+# All three sample vectors carry an ASCII text UPID, covering types 1/3/9.
+UPID_DECODE_CASES = [
+    ("ts_zero_upid", 1, "User Defined (deprecated)", "EP000011894954"),
+    ("ts_tvn1", 3, "Ad-ID", "TVNA10000001"),
+    ("ts_urn", 9, "ADI", "urn:nbcuni.com:brc:350755893"),
+]
+
+
+@pytest.mark.parametrize("vector,upid_type,type_name,decoded", UPID_DECODE_CASES)
+def test_segmentation_upid_decoded_text(vector, upid_type, type_name, decoded):
+    # Structured UPID parsing: text-typed UPIDs decode to ASCII strings, exposed
+    # as a derived field, while the raw bytes are preserved untouched. Use
+    # upid_as_str=False so the raw field stays bytes for the preservation check.
+    sd = SpliceEvent(VECTORS[vector]).to_dict(upid_as_str=False)["splice_descriptors"][0]
+    assert sd["segmentation_upid_type"] == upid_type
+    assert sd["segmentation_upid_type_name"] == type_name
+    assert sd["segmentation_upid_decoded"] == decoded
+    # Raw bytes are still the verbatim payload (what serialize re-emits).
+    assert sd["segmentation_upid"] == decoded.encode("ascii")
+
+
+def test_segmentation_upid_decoded_hex_fallback():
+    # A binary UPID type (0x10 UUID) has no text decoder, so the derived value
+    # falls back to a hex string -- which keeps to_dict(upid_as_str=True) JSON-safe.
+    desc = {
+        "splice_descriptor_tag": 2,
+        "descriptor_length": 0x1C,
+        "identifier": 0x43554549,
+        "segmentation_event_id": 1,
+        "segmentation_event_cancel_indicator": False,
+        "program_segmentation_flag": True,
+        "segmentation_duration_flag": False,
+        "delivery_not_restricted_flag": True,
+        "segmentation_upid_type": 0x10,
+        "segmentation_upid_length": 16,
+        "segmentation_upid": bytes.fromhex("000102030405060708090a0b0c0d0e0f"),
+        "segmentation_type_id": 0x30,
+        "segment_num": 0,
+        "segments_expected": 0,
+    }
+    parsed = SpliceDescriptor.from_hex_string(
+        SpliceDescriptor.from_dict(desc).hex_string
+    )
+    raw = parsed.to_dict(upid_as_str=False)
+    assert raw["segmentation_upid_type_name"] == "UUID"
+    assert raw["segmentation_upid_decoded"] == "000102030405060708090a0b0c0d0e0f"
+    # round-trip preserved the raw bytes verbatim
+    assert raw["segmentation_upid"] == desc["segmentation_upid"]
+    # the str-rendered export stays JSON-serializable
+    json.dumps(parsed.to_dict(upid_as_str=True))

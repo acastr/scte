@@ -38,10 +38,15 @@ class SegmentationDescriptor:
             if new_descriptor["segmentation_duration_flag"] is True:
                 new_descriptor["segmentation_duration"] = bitarray_data.read("uint:40")
             new_descriptor["segmentation_upid_type"] = bitarray_data.read("uint:8")
+            new_descriptor["segmentation_upid_type_name"] = scte35_enums.get_upid_type_name(
+                new_descriptor["segmentation_upid_type"])
             new_descriptor["segmentation_upid_length"] = bitarray_data.read("uint:8")
-            # UPID Parsing needs more work
             if new_descriptor["segmentation_upid_length"] > 0:
+                # Raw bytes are preserved verbatim for byte-exact serialization;
+                # segmentation_upid_decoded is a derived, JSON-safe interpretation.
                 new_descriptor["segmentation_upid"] = bitarray_data.read("bytes:" + str(new_descriptor["segmentation_upid_length"]))
+                new_descriptor["segmentation_upid_decoded"] = scte35_enums.decode_upid(
+                    new_descriptor["segmentation_upid_type"], new_descriptor["segmentation_upid"])
             new_descriptor["segmentation_type_id"] = bitarray_data.read("uint:8")
             new_descriptor["segmentation_message"] = scte35_enums.get_message(
                 new_descriptor["segmentation_type_id"])
